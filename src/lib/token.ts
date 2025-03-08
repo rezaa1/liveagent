@@ -1,13 +1,21 @@
-// Mock token generation for development
-// In production, this should be handled by a secure backend service
 export async function generateToken(roomName: string, participantName: string): Promise<string> {
-  // This is a mock implementation that creates a dummy token
-  // DO NOT use this in production!
-  const mockToken = btoa(JSON.stringify({
-    room: roomName,
-    participant: participantName,
-    timestamp: Date.now()
-  }));
+  const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/livekit-token`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+    },
+    body: JSON.stringify({
+      room: roomName,
+      participant: participantName,
+    }),
+  });
 
-  return Promise.resolve(mockToken);
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to generate token');
+  }
+
+  const { token } = await response.json();
+  return token;
 }
