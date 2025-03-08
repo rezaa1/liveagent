@@ -25,6 +25,7 @@ export class LiveKitManager {
   private maxRetries: number;
   private metricsInterval?: NodeJS.Timeout;
   private onMetricsUpdate?: (metrics: RoomMetrics) => void;
+  private token: string;
 
   constructor(
     roomName: string, 
@@ -32,6 +33,11 @@ export class LiveKitManager {
     maxRetries: number = 3,
     onMetricsUpdate?: (metrics: RoomMetrics) => void
   ) {
+    if (!token) {
+      throw new Error('Token is required');
+    }
+    
+    this.token = token;
     this.room = new Room({
       adaptiveStream: true,
       dynacast: true,
@@ -152,18 +158,31 @@ export class LiveKitManager {
 
   public async connect() {
     try {
-      const url = import.meta.env.VITE_LIVEKIT_URL;
-      if (!url) {
-        throw new Error('LiveKit URL is not configured');
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/livekit-url`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get LiveKit URL');
       }
+
+      const { url } = await response.json();
       
-      await this.room.connect(url, {
+      if (!url) {
+        throw new Error('LiveKit URL not found');
+      }
+
+      await this.room.connect(url, this.token, {
         autoSubscribe: true,
         adaptiveStream: true,
         dynacast: true,
       });
     } catch (error) {
-      toast.error('Failed to connect to room');
+      console.error('Connection error:', error);
+      toast.error(`Failed to connect to room: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw error;
     }
   }

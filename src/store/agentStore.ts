@@ -9,7 +9,7 @@ interface AgentStore {
   livekitManagers: Map<string, LiveKitManager>;
   addAgent: (data: AgentFormData) => void;
   removeAgent: (id: string) => void;
-  updateAgentStatus: (id: string, status: Agent['status']) => void;
+  updateAgentStatus: (id: string, status: Agent['status'], error?: string) => void;
   updateAgentMetrics: (id: string, metrics: Agent['metrics']) => void;
   startAgent: (id: string) => Promise<void>;
   stopAgent: (id: string) => void;
@@ -41,10 +41,10 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     toast.success('Agent removed');
   },
 
-  updateAgentStatus: (id: string, status: Agent['status']) => {
+  updateAgentStatus: (id: string, status: Agent['status'], error?: string) => {
     set((state) => ({
       agents: state.agents.map((agent) =>
-        agent.id === id ? { ...agent, status } : agent
+        agent.id === id ? { ...agent, status, error } : agent
       ),
     }));
   },
@@ -59,9 +59,20 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
 
   startAgent: async (id: string) => {
     const agent = get().agents.find((a) => a.id === id);
-    if (!agent) return;
+    if (!agent) {
+      toast.error('Agent not found');
+      return;
+    }
 
     try {
+      // Check if required environment variables are set
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error('Required environment variables are not configured. Please check your .env file.');
+      }
+
       get().updateAgentStatus(id, 'connecting');
       
       // Generate token for the agent
@@ -92,9 +103,10 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
       get().updateAgentStatus(id, 'online');
       toast.success(`Agent "${agent.name}" started successfully`);
     } catch (error) {
-      get().updateAgentStatus(id, 'error');
-      toast.error(`Failed to start agent: ${error instanceof Error ? error.message : 'Unknown error'}`);
       console.error('Failed to start agent:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      get().updateAgentStatus(id, 'error', errorMessage);
+      toast.error(`Failed to start agent: ${errorMessage}`);
     }
   },
 
