@@ -1,42 +1,38 @@
+import { supabase } from './supabase';
+
 export async function generateToken(roomName: string, participantName: string): Promise<string> {
   if (!roomName || !participantName) {
     throw new Error('Room name and participant name are required');
   }
 
   try {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error('Supabase configuration is missing');
-    }
-
-    const response = await fetch(`${supabaseUrl}/functions/v1/livekit-token`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabaseAnonKey}`,
-      },
-      body: JSON.stringify({
+    const { data, error } = await supabase.functions.invoke('livekit-token', {
+      body: {
         room: roomName,
         participant: participantName,
-      }),
+      },
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || `Token generation failed: ${response.status}`);
+    if (error) {
+      console.error('Token generation failed:', error);
+      throw new Error(`Token generation failed: ${error.message}`);
     }
 
-    const data = await response.json();
-    
-    if (!data.token) {
-      throw new Error('No token received from server');
+    if (!data || !data.token) {
+      console.error('Invalid token response:', data);
+      throw new Error('Invalid token response from server');
     }
 
     return data.token;
   } catch (error) {
-    console.error('Token generation error:', error);
-    throw new Error(`Failed to generate token: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error('Token generation error:', {
+      error,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    
+    throw new Error(
+      `Failed to generate token: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }
