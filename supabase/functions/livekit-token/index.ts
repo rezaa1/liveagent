@@ -10,6 +10,8 @@ interface TokenRequest {
 }
 
 serve(async (req) => {
+  console.log('Received request:', req);
+
   // Handle CORS
   if (req.method === 'OPTIONS') {
     return new Response(null, {
@@ -23,20 +25,24 @@ serve(async (req) => {
 
   // Only allow POST requests
   if (req.method !== 'POST') {
+    console.error('Method not allowed:', req.method);
     return new Response('Method not allowed', { status: 405 });
   }
 
   try {
     // Verify API key and secret are set
     if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
+      console.error('LiveKit API key or secret not configured');
       throw new Error('LiveKit API key or secret not configured');
     }
 
     // Get request body
     const { room, participant }: TokenRequest = await req.json();
+    console.log('Parsed request body:', { room, participant });
 
     // Validate required fields
     if (!room || !participant) {
+      console.error('Room and participant names are required');
       throw new Error('Room and participant names are required');
     }
 
@@ -53,6 +59,7 @@ serve(async (req) => {
 
     // Generate token
     const token = at.toJwt();
+    console.log('Generated token:', token);
 
     return new Response(JSON.stringify({ token }), {
       headers: {
@@ -61,10 +68,11 @@ serve(async (req) => {
       },
     });
   } catch (error) {
+    console.error('Error occurred:', error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), 
       { 
-        status: 400,
+        status: 500,
         headers: {
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*',
