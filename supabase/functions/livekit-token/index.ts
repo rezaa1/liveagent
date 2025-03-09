@@ -43,13 +43,12 @@ serve(async (req) => {
     // Create token with appropriate grants
     const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
       identity: participant,
+      ttl: '10m',
     });
     
     at.addGrant({
-      room,
       roomJoin: true,
-      canPublish: true,
-      canSubscribe: true,
+      room,
     });
 
     // Generate token
