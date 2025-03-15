@@ -1,10 +1,6 @@
-
-#### `frontend/postcss.config.js`
-```javascript
 export default {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
-};
-```
+    plugins: {
+      tailwindcss: {},
+      autoprefixer: {},
+    },
+  };
