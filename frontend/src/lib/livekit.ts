@@ -144,7 +144,8 @@ export class LiveKitManager {
 
   private async reconnect() {
     try {
-      await this.connect();
+      const liveKitUrl = process.env.REACT_APP_LIVEKIT_URL;
+      await this.connect(liveKitUrl);
     } catch (error) {
       toast.error('Reconnection failed');
     }

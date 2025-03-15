@@ -5,8 +5,8 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - LIVEKIT_API_KEY=your_livekit_api_key
-      - LIVEKIT_API_SECRET=your_livekit_api_secret
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
     volumes:
       - ./backend:/app
 
@@ -18,8 +18,7 @@ services:
       - "8900:80"
     environment:
       - NODE_ENV=production
-      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
-      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+      - REACT_APP_LIVEKIT_URL=${REACT_APP_LIVEKIT_URL}
     volumes:
       - ./frontend:/app
       - /app/node_modules
