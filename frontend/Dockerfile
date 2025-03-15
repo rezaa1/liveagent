@@ -2,18 +2,15 @@ FROM node:14 as build
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files first for better caching
 COPY package*.json ./
 RUN npm install
 
-# Copy source files
+# Copy the rest of the application
 COPY . .
 
 # Build the application
 RUN npm run build
-
-# Verify build output
-RUN ls -la /app/dist || echo "Build failed - dist directory not created"
 
 # Use nginx for serving
 FROM nginx:alpine
@@ -21,7 +18,9 @@ FROM nginx:alpine
 # Copy built assets to nginx
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Expose port 80
+# Copy nginx configuration if needed
+# COPY nginx.conf /etc/nginx/conf.d/default.conf
+
 EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]
