@@ -9,6 +9,9 @@ export default defineConfig({
       external: [],
     },
   },
+  optimizeDeps: {
+    include: ['uuid'],
+  },
   resolve: {
     alias: {
       'react': 'react',
