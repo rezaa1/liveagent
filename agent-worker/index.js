@@ -23,6 +23,8 @@ class AgentWorker {
     this.maxReconnectAttempts = 5;
     this.roomName = '';
     this.identity = '';
+    this.connected = false;
+    this.reconnectTimeout = null;
   }
 
   async generateToken(roomName) {
@@ -52,21 +54,37 @@ class AgentWorker {
   }
 
   setupWebSocket(url) {
+    if (this.ws) {
+      console.log('Cleaning up existing WebSocket connection');
+      this.cleanup();
+    }
+
     console.log('Setting up WebSocket connection to:', url);
     
     this.ws = new WebSocket(url, {
-      rejectUnauthorized: false, // Allow self-signed certificates
+      rejectUnauthorized: false,
       headers: {
         'User-Agent': 'LiveKit-Agent-Worker',
       },
-      perMessageDeflate: false // Disable compression to handle binary messages better
+      perMessageDeflate: false,
+      handshakeTimeout: 10000, // 10 seconds handshake timeout
+      maxPayload: 1024 * 1024 // 1MB max message size
     });
 
+    // Set a connection timeout
+    const connectionTimeout = setTimeout(() => {
+      if (!this.connected) {
+        console.error('WebSocket connection timeout');
+        this.ws?.close();
+      }
+    }, 15000);
+
     this.ws.on('open', () => {
+      clearTimeout(connectionTimeout);
+      this.connected = true;
       console.log('WebSocket connection established');
       this.startHeartbeat();
       
-      // Join room message
       const joinMessage = {
         type: 'join',
         room: this.roomName,
@@ -75,17 +93,25 @@ class AgentWorker {
       this.ws.send(JSON.stringify(joinMessage));
     });
 
+    this.ws.on('ping', () => {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        this.ws.pong();
+      }
+    });
+
     this.ws.on('message', (data, isBinary) => {
       try {
-        // Handle binary messages differently from text messages
         if (isBinary) {
           console.log('Received binary message of length:', data.length);
-          // Handle binary protocol messages if needed
           return;
         }
 
-        // Try to parse as JSON only if it's a text message
         const textData = data.toString('utf8');
+        if (!textData.trim()) {
+          console.log('Received empty message, skipping');
+          return;
+        }
+
         if (textData.startsWith('{') || textData.startsWith('[')) {
           const message = JSON.parse(textData);
           console.log('Received JSON message:', message);
@@ -93,6 +119,7 @@ class AgentWorker {
           switch (message.type) {
             case 'connected':
               console.log('Successfully joined room:', message.room);
+              this.reconnectAttempts = 0; // Reset reconnect attempts on successful connection
               break;
             case 'participant_joined':
               console.log('Participant joined:', message.participant);
@@ -102,46 +129,82 @@ class AgentWorker {
               break;
             case 'error':
               console.error('Received error:', message.error);
+              if (message.error.includes('token expired')) {
+                this.reconnect(true); // Force immediate reconnect for token expiration
+              }
               break;
           }
         } else {
           console.log('Received text message:', textData);
         }
       } catch (error) {
-        // Don't treat parsing errors as critical - just log them
         console.log('Message parsing skipped:', error.message);
       }
     });
 
     this.ws.on('close', (code, reason) => {
+      clearTimeout(connectionTimeout);
       const reasonText = reason.toString() || 'No reason provided';
       console.log('WebSocket connection closed:', { code, reason: reasonText });
+      
+      this.connected = false;
       this.cleanup();
-      this.reconnect();
+
+      // Don't reconnect on normal closure unless forced
+      if (code !== 1000 || this.reconnectAttempts > 0) {
+        this.reconnect();
+      }
     });
 
     this.ws.on('error', (error) => {
       console.error('WebSocket error:', error);
+      this.connected = false;
       this.cleanup();
       this.reconnect();
     });
   }
 
   startHeartbeat() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+    }
+
     this.heartbeatInterval = setInterval(() => {
-      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-        this.ws.send(JSON.stringify({ type: 'heartbeat' }));
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        try {
+          this.ws.send(JSON.stringify({ type: 'heartbeat' }));
+        } catch (error) {
+          console.error('Failed to send heartbeat:', error);
+          this.cleanup();
+          this.reconnect();
+        }
+      } else {
+        this.cleanup();
+        this.reconnect();
       }
-    }, 30000); // Send heartbeat every 30 seconds
+    }, 30000);
   }
 
   cleanup() {
+    this.connected = false;
+    
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
       this.heartbeatInterval = null;
     }
+
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+
     if (this.ws) {
-      this.ws.close();
+      try {
+        this.ws.removeAllListeners();
+        this.ws.close();
+      } catch (error) {
+        console.error('Error during WebSocket cleanup:', error);
+      }
       this.ws = null;
     }
   }
@@ -161,7 +224,12 @@ class AgentWorker {
     }
   }
 
-  async reconnect() {
+  async reconnect(immediate = false) {
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       console.error('Max reconnection attempts reached');
       process.exit(1);
@@ -169,15 +237,13 @@ class AgentWorker {
     }
 
     this.reconnectAttempts++;
-    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 10000);
+    const delay = immediate ? 0 : Math.min(1000 * Math.pow(2, this.reconnectAttempts), 10000);
     
     console.log(`Reconnecting attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms...`);
     
-    setTimeout(async () => {
+    this.reconnectTimeout = setTimeout(async () => {
       try {
         await this.connect(this.roomName);
-        this.reconnectAttempts = 0;
-        console.log('Successfully reconnected');
       } catch (error) {
         console.error('Reconnection failed:', error);
         this.reconnect();
