@@ -1,6 +1,7 @@
 import { WebSocket } from 'ws';
 import { AccessToken } from 'livekit-server-sdk';
 import { v4 as uuidv4 } from 'uuid';
+import { PromptAgent } from './lib/promptAgent.js';
 
 const LIVEKIT_URL = process.env.LIVEKIT_URL;
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY;
@@ -25,6 +26,12 @@ class AgentWorker {
     this.identity = '';
     this.connected = false;
     this.reconnectTimeout = null;
+    this.promptAgent = new PromptAgent();
+    this.metrics = {
+      quality: 'good',
+      latency: 0,
+      packetLoss: 0
+    };
   }
 
   async generateToken(roomName) {
@@ -67,11 +74,10 @@ class AgentWorker {
         'User-Agent': 'LiveKit-Agent-Worker',
       },
       perMessageDeflate: false,
-      handshakeTimeout: 10000, // 10 seconds handshake timeout
-      maxPayload: 1024 * 1024 // 1MB max message size
+      handshakeTimeout: 10000,
+      maxPayload: 1024 * 1024
     });
 
-    // Set a connection timeout
     const connectionTimeout = setTimeout(() => {
       if (!this.connected) {
         console.error('WebSocket connection timeout');
@@ -85,12 +91,14 @@ class AgentWorker {
       console.log('WebSocket connection established');
       this.startHeartbeat();
       
-      const joinMessage = {
-        type: 'join',
-        room: this.roomName,
-        identity: this.identity,
-      };
-      this.ws.send(JSON.stringify(joinMessage));
+      // Send initial greeting
+      setTimeout(async () => {
+        const greeting = await this.promptAgent.processMessage(
+          "Hello! I'm your AI assistant for this call. How can I help you today?",
+          this.metrics
+        );
+        this.sendMessage(greeting);
+      }, 1000);
     });
 
     this.ws.on('ping', () => {
@@ -99,7 +107,7 @@ class AgentWorker {
       }
     });
 
-    this.ws.on('message', (data, isBinary) => {
+    this.ws.on('message', async (data, isBinary) => {
       try {
         if (isBinary) {
           console.log('Received binary message of length:', data.length);
@@ -108,7 +116,6 @@ class AgentWorker {
 
         const textData = data.toString('utf8');
         if (!textData.trim()) {
-          console.log('Received empty message, skipping');
           return;
         }
 
@@ -119,26 +126,35 @@ class AgentWorker {
           switch (message.type) {
             case 'connected':
               console.log('Successfully joined room:', message.room);
-              this.reconnectAttempts = 0; // Reset reconnect attempts on successful connection
+              this.reconnectAttempts = 0;
               break;
             case 'participant_joined':
               console.log('Participant joined:', message.participant);
+              const welcome = await this.promptAgent.processMessage(
+                `Welcome ${message.participant}! How can I assist you today?`,
+                this.metrics
+              );
+              this.sendMessage(welcome);
               break;
             case 'participant_left':
               console.log('Participant left:', message.participant);
               break;
+            case 'chat':
+              if (message.from !== this.identity) {
+                const response = await this.promptAgent.processMessage(message.text, this.metrics);
+                this.sendMessage(response);
+              }
+              break;
             case 'error':
               console.error('Received error:', message.error);
               if (message.error.includes('token expired')) {
-                this.reconnect(true); // Force immediate reconnect for token expiration
+                this.reconnect(true);
               }
               break;
           }
-        } else {
-          console.log('Received text message:', textData);
         }
       } catch (error) {
-        console.log('Message parsing skipped:', error.message);
+        console.log('Message processing error:', error.message);
       }
     });
 
@@ -150,7 +166,6 @@ class AgentWorker {
       this.connected = false;
       this.cleanup();
 
-      // Don't reconnect on normal closure unless forced
       if (code !== 1000 || this.reconnectAttempts > 0) {
         this.reconnect();
       }
@@ -162,6 +177,17 @@ class AgentWorker {
       this.cleanup();
       this.reconnect();
     });
+  }
+
+  sendMessage(text) {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      const message = {
+        type: 'chat',
+        from: this.identity,
+        text: text
+      };
+      this.ws.send(JSON.stringify(message));
+    }
   }
 
   startHeartbeat() {
