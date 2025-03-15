@@ -163,15 +163,33 @@ export class LiveKitManager {
     }
   }
 
+  private async checkMediaDevices(): Promise<boolean> {
+    try {
+      if (typeof navigator === 'undefined' || !navigator.mediaDevices) {
+        console.warn('MediaDevices API not available');
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.warn('Error checking media devices:', error);
+      return false;
+    }
+  }
+
   public async connect(url: string) {
     try {
       if (!this.isValidUrl(url)) {
         throw new Error('Invalid LiveKit URL provided');
       }
 
-      // Connect first without enabling tracks
       await this.room.connect(url, this.token, {
         autoSubscribe: true,
+        rtcConfig: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+          ],
+        },
       });
     } catch (error) {
       console.error('Connection error:', error);
@@ -192,11 +210,15 @@ export class LiveKitManager {
     
     try {
       if (enabled) {
+        const hasDevices = await this.checkMediaDevices();
+        if (!hasDevices) {
+          throw new Error('Media devices not available');
+        }
         await this.room.localParticipant.setMicrophoneEnabled(enabled);
       }
     } catch (error) {
       console.error('Error enabling audio:', error);
-      toast.error('Failed to enable audio');
+      toast.error('Failed to enable audio: Media devices not available');
     }
   }
 
@@ -205,11 +227,15 @@ export class LiveKitManager {
     
     try {
       if (enabled) {
+        const hasDevices = await this.checkMediaDevices();
+        if (!hasDevices) {
+          throw new Error('Media devices not available');
+        }
         await this.room.localParticipant.setCameraEnabled(enabled);
       }
     } catch (error) {
       console.error('Error enabling video:', error);
-      toast.error('Failed to enable video');
+      toast.error('Failed to enable video: Media devices not available');
     }
   }
 
