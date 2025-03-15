@@ -150,9 +150,9 @@ export class LiveKitManager {
     }
   }
 
-  public async connect() {
+  public async connect(url: string) {
     try {
-      await this.room.connect('wss://demo.livekit.cloud', this.token, {
+      await this.room.connect(url, this.token, {
         autoSubscribe: true,
       });
     } catch (error) {
