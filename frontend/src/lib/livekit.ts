@@ -145,12 +145,22 @@ export class LiveKitManager {
   private async reconnect() {
     try {
       const liveKitUrl = process.env.REACT_APP_LIVEKIT_URL;
-      if (!liveKitUrl) {
-        throw new Error('LiveKit URL is not defined');
+      if (!liveKitUrl || !this.isValidUrl(liveKitUrl)) {
+        console.error('Invalid LiveKit URL:', liveKitUrl); // Added console error for debugging
+        throw new Error('LiveKit URL is not defined or is invalid');
       }
       await this.connect(liveKitUrl);
     } catch (error) {
       toast.error('Reconnection failed');
+    }
+  }
+
+  private isValidUrl(urlString: string): boolean {
+    try {
+      new URL(urlString);
+      return true;
+    } catch (error) {
+      return false;
     }
   }
 
