@@ -18,7 +18,7 @@ services:
       - "8900:80"
     environment:
       - NODE_ENV=production
-      - REACT_APP_LIVEKIT_URL=${REACT_APP_LIVEKIT_URL}
+      - VITE_LIVEKIT_URL=${LIVEKIT_URL}
     volumes:
       - ./frontend:/app
       - /app/node_modules
@@ -35,6 +35,6 @@ services:
       - LIVEKIT_URL=${LIVEKIT_URL}
     deploy:
       replicas: 2
-    restart: always
+    restart: unless-stopped
     depends_on:
       - backend
