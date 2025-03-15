@@ -6,8 +6,8 @@
     "start": "node index.js"
   },
   "dependencies": {
-    "livekit-client": "^1.15.5",
-    "livekit-server-sdk": "^1.2.7",
+    "@livekit/server-sdk": "^1.2.7",
+    "ws": "^8.16.0",
     "uuid": "^9.0.1"
   }
 }
