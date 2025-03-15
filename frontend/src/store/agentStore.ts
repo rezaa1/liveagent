@@ -4,6 +4,7 @@ import { Agent, AgentFormData } from '../types/agent';
 import { LiveKitManager, RoomMetrics } from '../lib/livekit';
 import { generateToken } from '../lib/token';
 import { toast } from 'react-hot-toast';
+import { ConnectionQuality } from 'livekit-client';
 
 interface AgentStore {
   agents: Agent[];
@@ -76,8 +77,8 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
         agent.configuration.maxRetries,
         (metrics: RoomMetrics) => {
           get().updateAgentMetrics(id, {
-            connectionQuality: metrics.connectionQuality === 100 ? 'excellent' :
-                             metrics.connectionQuality >= 50 ? 'good' : 'poor',
+            connectionQuality: metrics.connectionQuality === ConnectionQuality.Excellent ? 'excellent' :
+                             metrics.connectionQuality === ConnectionQuality.Good ? 'good' : 'poor',
             latency: metrics.latency,
             packetsLost: metrics.packetsLost,
           });

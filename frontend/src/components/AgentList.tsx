@@ -1,4 +1,3 @@
-import React from 'react';
 import { Play, Square, Trash2, Activity } from 'lucide-react';
 import { useAgentStore } from '../store/agentStore';
 

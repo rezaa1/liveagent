@@ -3,12 +3,13 @@ import {
   RoomEvent,
   ConnectionState,
   ConnectionQuality,
-  LocalParticipant,
   RemoteParticipant,
   Participant,
   DisconnectReason,
-  RoomOptions,
   Track,
+  RemoteTrack,
+  RemoteTrackPublication,
+  VideoPresets,
 } from 'livekit-client';
 import { toast } from 'react-hot-toast';
 
@@ -39,14 +40,14 @@ export class LiveKitManager {
     
     this.token = token;
     this.room = new Room({
-      adaptiveStream: true,
+      adaptiveStreamingPreset: 'high',
       dynacast: true,
       publishDefaults: {
         simulcast: true,
         videoSimulcastLayers: [
-          { width: 1280, height: 720, fps: 30 },
-          { width: 640, height: 360, fps: 20 },
-          { width: 320, height: 180, fps: 15 },
+          VideoPresets.h720,
+          VideoPresets.h360,
+          VideoPresets.h180,
         ],
       },
     });
@@ -72,9 +73,9 @@ export class LiveKitManager {
     this.metricsInterval = setInterval(() => {
       if (this.onMetricsUpdate && this.room.state === ConnectionState.Connected) {
         const metrics: RoomMetrics = {
-          connectionQuality: this.room.connectionQuality,
-          latency: this.room.localParticipant?.getConnectionQuality()?.score ?? 0,
-          packetsLost: this.room.localParticipant?.getConnectionQuality()?.score ?? 0,
+          connectionQuality: this.room.localParticipant?.connectionQuality ?? ConnectionQuality.Unknown,
+          latency: 0, // LiveKit doesn't expose direct latency measurements
+          packetsLost: 0, // LiveKit doesn't expose direct packet loss measurements
           participantCount: this.room.participants.size,
         };
         this.onMetricsUpdate(metrics);
@@ -107,7 +108,7 @@ export class LiveKitManager {
       case ConnectionState.Disconnected:
         toast.error('Disconnected from room');
         break;
-      case ConnectionState.Failed:
+      case ConnectionState.Reconnecting:
         toast.error('Room connection failed');
         break;
     }
@@ -118,7 +119,7 @@ export class LiveKitManager {
   };
 
   private handleParticipantDisconnected = (participant: RemoteParticipant) => {
-    toast.info(`${participant.identity} left the room`);
+    toast.success(`${participant.identity} left the room`);
   };
 
   private handleMediaDevicesError = (e: Error) => {
@@ -126,25 +127,25 @@ export class LiveKitManager {
   };
 
   private handleTrackSubscribed = (
-    track: Track,
-    publication: Track,
-    participant: Participant
+    track: RemoteTrack,
+    publication: RemoteTrackPublication,
+    participant: RemoteParticipant
   ) => {
     toast.success(`Subscribed to ${track.kind} track from ${participant.identity}`);
   };
 
   private handleTrackUnsubscribed = (
-    track: Track,
-    publication: Track,
-    participant: Participant
+    track: RemoteTrack,
+    publication: RemoteTrackPublication,
+    participant: RemoteParticipant
   ) => {
-    toast.info(`Unsubscribed from ${track.kind} track from ${participant.identity}`);
+    toast.success(`Unsubscribed from ${track.kind} track from ${participant.identity}`);
   };
 
   private handleActiveSpeakersChanged = (speakers: Participant[]) => {
     if (speakers.length > 0) {
       const speakerNames = speakers.map(s => s.identity).join(', ');
-      toast.info(`Active speakers: ${speakerNames}`);
+      toast.success(`Active speakers: ${speakerNames}`);
     }
   };
 
@@ -158,10 +159,10 @@ export class LiveKitManager {
 
   public async connect() {
     try {
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/livekit-url`, {
+      const response = await fetch('/api/livekit-url', {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${this.token}`,
         },
       });
 
@@ -177,8 +178,6 @@ export class LiveKitManager {
 
       await this.room.connect(url, this.token, {
         autoSubscribe: true,
-        adaptiveStream: true,
-        dynacast: true,
       });
     } catch (error) {
       console.error('Connection error:', error);
@@ -207,7 +206,7 @@ export class LiveKitManager {
   }
 
   public getConnectionQuality(): ConnectionQuality {
-    return this.room.connectionQuality;
+    return this.room.localParticipant?.connectionQuality ?? ConnectionQuality.Unknown;
   }
 
   public cleanup() {
