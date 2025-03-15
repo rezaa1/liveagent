@@ -1,0 +1,13 @@
+{
+  "name": "livekit-agent-worker",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "livekit-client": "^1.15.5",
+    "livekit-server-sdk": "^1.2.7",
+    "uuid": "^9.0.1"
+  }
+}

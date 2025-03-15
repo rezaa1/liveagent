@@ -24,3 +24,17 @@ services:
       - /app/node_modules
     depends_on:
       - backend
+
+  agent-worker:
+    build:
+      context: ./agent-worker
+      dockerfile: Dockerfile
+    environment:
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
+      - LIVEKIT_URL=${LIVEKIT_URL}
+    deploy:
+      replicas: 2
+    restart: always
+    depends_on:
+      - backend
