@@ -6,20 +6,21 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 
-# Copy the rest of the application
-COPY . .
+# Copy all necessary files for the build
+COPY vite.config.ts .
+COPY tsconfig*.json ./
+COPY index.html .
+COPY public/ ./public/
+COPY src/ ./src/
 
-# Build the application
-RUN npm run build
+# Build the application and verify the output
+RUN npm run build && ls -la dist/
 
 # Use nginx for serving
 FROM nginx:alpine
 
 # Copy built assets to nginx
 COPY --from=build /app/dist /usr/share/nginx/html
-
-# Copy nginx configuration if needed
-# COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 

@@ -1,25 +1,17 @@
-/// <reference types="vite/client" />
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
-// Add any additional type definitions here
-// For example, if you have custom environment variables:
-interface ImportMetaEnv {
-  VITE_SUPABASE_URL: string;
-  VITE_SUPABASE_ANON_KEY: string;
-  // Add other environment variables as needed
-}
-
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
-}
-
-#### `frontend/tailwind.config.js`
-```javascript
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
-  theme: {
-    extend: {},
+export default defineConfig({
+  plugins: [react()],
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    emptyOutDir: true,
+    sourcemap: false,
+    minify: true,
   },
-  plugins: [],
-};
-```
+  server: {
+    port: 8900,
+    host: true,
+  },
+});

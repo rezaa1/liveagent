@@ -12,11 +12,11 @@ services:
 
   frontend:
     build:
-      context: .
-      dockerfile: frontend/Dockerfile
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
       - "8900:80"
-    volumes:
-      - ./frontend:/app
+    environment:
+      - NODE_ENV=production
     depends_on:
       - backend
