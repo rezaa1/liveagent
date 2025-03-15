@@ -6,10 +6,9 @@ import {
   RemoteParticipant,
   Participant,
   DisconnectReason,
-  Track,
   RemoteTrack,
   RemoteTrackPublication,
-  VideoPresets,
+  RoomOptions,
 } from 'livekit-client';
 import { toast } from 'react-hot-toast';
 
@@ -29,7 +28,7 @@ export class LiveKitManager {
   private token: string;
 
   constructor(
-    roomName: string, 
+    private readonly roomName: string, 
     token: string, 
     maxRetries: number = 3,
     onMetricsUpdate?: (metrics: RoomMetrics) => void
@@ -40,15 +39,10 @@ export class LiveKitManager {
     
     this.token = token;
     this.room = new Room({
-      adaptiveStreamingPreset: 'high',
       dynacast: true,
+      adaptiveStream: true,
       publishDefaults: {
         simulcast: true,
-        videoSimulcastLayers: [
-          VideoPresets.h720,
-          VideoPresets.h360,
-          VideoPresets.h180,
-        ],
       },
     });
     this.maxRetries = maxRetries;
@@ -84,7 +78,7 @@ export class LiveKitManager {
   }
 
   private handleConnected = () => {
-    toast.success('Connected to room');
+    toast.success(`Connected to room: ${this.roomName}`);
     this.retryCount = 0;
     this.startMetricsCollection();
   };
@@ -128,7 +122,7 @@ export class LiveKitManager {
 
   private handleTrackSubscribed = (
     track: RemoteTrack,
-    publication: RemoteTrackPublication,
+    _publication: RemoteTrackPublication,
     participant: RemoteParticipant
   ) => {
     toast.success(`Subscribed to ${track.kind} track from ${participant.identity}`);
@@ -136,7 +130,7 @@ export class LiveKitManager {
 
   private handleTrackUnsubscribed = (
     track: RemoteTrack,
-    publication: RemoteTrackPublication,
+    _publication: RemoteTrackPublication,
     participant: RemoteParticipant
   ) => {
     toast.success(`Unsubscribed from ${track.kind} track from ${participant.identity}`);
