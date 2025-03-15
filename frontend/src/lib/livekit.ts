@@ -144,7 +144,7 @@ export class LiveKitManager {
 
   private async reconnect() {
     try {
-      const liveKitUrl = import.meta.env.VITE_LIVEKIT_URL;
+      const liveKitUrl = "wss://callninja-9rs9nskz.livekit.cloud";
       if (!liveKitUrl) {
         throw new Error('LiveKit URL is not defined in environment variables');
       }
