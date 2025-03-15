@@ -145,6 +145,9 @@ export class LiveKitManager {
   private async reconnect() {
     try {
       const liveKitUrl = process.env.REACT_APP_LIVEKIT_URL;
+      if (!liveKitUrl) {
+        throw new Error('LiveKit URL is not defined');
+      }
       await this.connect(liveKitUrl);
     } catch (error) {
       toast.error('Reconnection failed');
