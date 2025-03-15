@@ -8,7 +8,7 @@
 
    COPY . .
 
-   RUN npm run build
+   RUN npm run build --verbose
    RUN echo "Contents of /app before checking dist:" && ls -la /app  # Check contents of the app directory
    RUN echo "Contents of /app/dist after build:" && ls -la /app/dist  # Check contents of the dist folder
    RUN echo "Build completed"  # Indicate build completion
