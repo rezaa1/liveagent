@@ -1,5 +1,5 @@
 import { WebSocket } from 'ws';
-import { AccessToken } from '@livekit/server-sdk';
+import { AccessToken } from 'livekit-server-sdk';
 import { v4 as uuidv4 } from 'uuid';
 
 const LIVEKIT_URL = process.env.LIVEKIT_URL;
