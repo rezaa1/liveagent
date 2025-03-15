@@ -1,23 +1,22 @@
-
-#### `docker-compose.yml`
-version: '3.8'
-
 services:
   backend:
     build:
       context: ./backend
     ports:
-      - "8000:8000"  # Map backend port
+      - "8000:8000"
     environment:
       - LIVEKIT_API_KEY=your_livekit_api_key
       - LIVEKIT_API_SECRET=your_livekit_api_secret
     volumes:
-      - ./backend:/app  # Mount backend code for live updates
+      - ./backend:/app
 
   frontend:
     build:
-      context: ./frontend
+      context: .
+      dockerfile: frontend/Dockerfile
     ports:
-      - "8900:80"  # Map frontend port
+      - "8900:80"
     volumes:
-      - ./frontend:/app  # Mount frontend code for live updates
+      - ./frontend:/app
+    depends_on:
+      - backend

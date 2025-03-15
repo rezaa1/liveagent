@@ -1,21 +1,27 @@
-   # frontend/Dockerfile
-   FROM node:14 as build
+FROM node:14 as build
 
-   WORKDIR /app
+WORKDIR /app
 
-   COPY package*.json ./
-   RUN npm install
+# Copy package files
+COPY package*.json ./
+RUN npm install
 
-   COPY . .
+# Copy source files
+COPY . .
 
-   RUN npm run build --verbose
-   RUN echo "Contents of /app before checking dist:" && ls -la /app  # Check contents of the app directory
-   RUN echo "Contents of /app/dist after build:" && ls -la /app/dist  # Check contents of the dist folder
-   RUN echo "Build completed"  # Indicate build completion
+# Build the application
+RUN npm run build
 
-   FROM nginx:alpine
-   COPY --from=build /app/dist /usr/share/nginx/html
+# Verify build output
+RUN ls -la /app/dist || echo "Build failed - dist directory not created"
 
-   EXPOSE 80
+# Use nginx for serving
+FROM nginx:alpine
 
-   CMD ["nginx", "-g", "daemon off;"]
+# Copy built assets to nginx
+COPY --from=build /app/dist /usr/share/nginx/html
+
+# Expose port 80
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
