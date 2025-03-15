@@ -165,8 +165,10 @@ export class LiveKitManager {
 
   private async checkMediaDevices(): Promise<boolean> {
     try {
-      if (typeof navigator === 'undefined' || !navigator.mediaDevices) {
-        console.warn('MediaDevices API not available');
+      if (typeof navigator === 'undefined' || 
+          !navigator.mediaDevices || 
+          typeof navigator.mediaDevices.getUserMedia !== 'function') {
+        console.warn('MediaDevices API or getUserMedia not available');
         return false;
       }
       return true;
@@ -175,7 +177,7 @@ export class LiveKitManager {
       return false;
     }
   }
-
+  
   public async connect(url: string) {
     try {
       if (!this.isValidUrl(url)) {
