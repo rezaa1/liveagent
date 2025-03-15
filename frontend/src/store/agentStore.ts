@@ -87,7 +87,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
 
       get().livekitManagers.set(id, manager);
       
-      await manager.connect();
+      await manager.connect(agent.roomName);
       await manager.enableAudio(agent.configuration.audioEnabled);
       await manager.enableVideo(agent.configuration.videoEnabled);
       
