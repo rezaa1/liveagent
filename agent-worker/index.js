@@ -2,6 +2,7 @@ import { WebSocket } from 'ws';
 import { AccessToken } from 'livekit-server-sdk';
 import { v4 as uuidv4 } from 'uuid';
 import { PromptAgent } from './lib/promptAgent.js';
+import protobuf from 'protobufjs';
 
 const LIVEKIT_URL = process.env.LIVEKIT_URL;
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY;
@@ -32,6 +33,7 @@ class AgentWorker {
       latency: 0,
       packetLoss: 0
     };
+    this.joinedRoom = false;
   }
 
   async generateToken(roomName) {
@@ -41,7 +43,7 @@ class AgentWorker {
       
       const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
         identity: this.identity,
-        ttl: 24 * 60 * 60, // 24 hours
+        ttl: 24 * 60 * 60,
       });
 
       at.addGrant({
@@ -75,7 +77,6 @@ class AgentWorker {
       },
       perMessageDeflate: false,
       handshakeTimeout: 10000,
-      maxPayload: 1024 * 1024
     });
 
     const connectionTimeout = setTimeout(() => {
@@ -91,66 +92,56 @@ class AgentWorker {
       console.log('WebSocket connection established');
       this.startHeartbeat();
       
-      // Send initial greeting
-      setTimeout(async () => {
-        const greeting = await this.promptAgent.processMessage(
-          "Hello! I'm your AI assistant for this call. How can I help you today?",
-          this.metrics
-        );
-        this.sendMessage(greeting);
-      }, 1000);
+      // Join room message
+      const joinMessage = {
+        protocol: 2,
+        join: {
+          token: url.split('access_token=')[1],
+          metadata: JSON.stringify({
+            agent: true,
+            version: '1.0.0'
+          })
+        }
+      };
+      
+      this.ws.send(JSON.stringify(joinMessage));
     });
 
-    this.ws.on('ping', () => {
-      if (this.ws?.readyState === WebSocket.OPEN) {
-        this.ws.pong();
-      }
-    });
-
-    this.ws.on('message', async (data, isBinary) => {
+    this.ws.on('message', async (data) => {
       try {
-        if (isBinary) {
+        // Handle binary messages
+        if (data instanceof Buffer) {
+          // Log binary message length but don't try to parse protobuf yet
           console.log('Received binary message of length:', data.length);
           return;
         }
 
+        // Handle text messages
         const textData = data.toString('utf8');
-        if (!textData.trim()) {
-          return;
+        if (!textData.trim()) return;
+
+        const message = JSON.parse(textData);
+        console.log('Received message:', message);
+
+        if (message.join) {
+          this.joinedRoom = true;
+          console.log('Successfully joined room');
+          this.reconnectAttempts = 0;
+
+          // Send initial greeting after joining
+          setTimeout(async () => {
+            const greeting = await this.promptAgent.processMessage(
+              "Hello! I'm your AI assistant for this call. How can I help you today?",
+              this.metrics
+            );
+            this.sendMessage(greeting);
+          }, 1000);
         }
 
-        if (textData.startsWith('{') || textData.startsWith('[')) {
-          const message = JSON.parse(textData);
-          console.log('Received JSON message:', message);
-          
-          switch (message.type) {
-            case 'connected':
-              console.log('Successfully joined room:', message.room);
-              this.reconnectAttempts = 0;
-              break;
-            case 'participant_joined':
-              console.log('Participant joined:', message.participant);
-              const welcome = await this.promptAgent.processMessage(
-                `Welcome ${message.participant}! How can I assist you today?`,
-                this.metrics
-              );
-              this.sendMessage(welcome);
-              break;
-            case 'participant_left':
-              console.log('Participant left:', message.participant);
-              break;
-            case 'chat':
-              if (message.from !== this.identity) {
-                const response = await this.promptAgent.processMessage(message.text, this.metrics);
-                this.sendMessage(response);
-              }
-              break;
-            case 'error':
-              console.error('Received error:', message.error);
-              if (message.error.includes('token expired')) {
-                this.reconnect(true);
-              }
-              break;
+        if (message.error) {
+          console.error('Received error:', message.error);
+          if (message.error.includes('token expired')) {
+            await this.reconnect(true);
           }
         }
       } catch (error) {
@@ -164,9 +155,11 @@ class AgentWorker {
       console.log('WebSocket connection closed:', { code, reason: reasonText });
       
       this.connected = false;
+      this.joinedRoom = false;
       this.cleanup();
 
-      if (code !== 1000 || this.reconnectAttempts > 0) {
+      // Only reconnect if we were previously joined or it's not a normal closure
+      if (code !== 1000 || this.joinedRoom) {
         this.reconnect();
       }
     });
@@ -174,19 +167,28 @@ class AgentWorker {
     this.ws.on('error', (error) => {
       console.error('WebSocket error:', error);
       this.connected = false;
+      this.joinedRoom = false;
       this.cleanup();
       this.reconnect();
     });
   }
 
   sendMessage(text) {
-    if (this.ws?.readyState === WebSocket.OPEN) {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+
+    try {
       const message = {
-        type: 'chat',
-        from: this.identity,
-        text: text
+        signal: {
+          data: Buffer.from(JSON.stringify({
+            type: 'chat',
+            from: this.identity,
+            text: text
+          })).toString('base64')
+        }
       };
       this.ws.send(JSON.stringify(message));
+    } catch (error) {
+      console.error('Failed to send message:', error);
     }
   }
 
@@ -198,7 +200,7 @@ class AgentWorker {
     this.heartbeatInterval = setInterval(() => {
       if (this.ws?.readyState === WebSocket.OPEN) {
         try {
-          this.ws.send(JSON.stringify({ type: 'heartbeat' }));
+          this.ws.send(JSON.stringify({ ping: Date.now() }));
         } catch (error) {
           console.error('Failed to send heartbeat:', error);
           this.cleanup();
@@ -208,11 +210,12 @@ class AgentWorker {
         this.cleanup();
         this.reconnect();
       }
-    }, 30000);
+    }, 15000);
   }
 
   cleanup() {
     this.connected = false;
+    this.joinedRoom = false;
     
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);

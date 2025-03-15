@@ -7,8 +7,10 @@
   },
   "dependencies": {
     "livekit-server-sdk": "^1.2.7",
+    "livekit-client": "^1.15.5",
     "ws": "^8.16.0",
     "uuid": "^9.0.1",
-    "openai": "^4.28.0"
+    "openai": "^4.28.0",
+    "protobufjs": "^7.2.6"
   }
 }
