@@ -52,7 +52,14 @@ class AgentWorker {
   }
 
   setupWebSocket(url) {
-    this.ws = new WebSocket(url);
+    console.log('Setting up WebSocket connection to:', url);
+    
+    this.ws = new WebSocket(url, {
+      rejectUnauthorized: false, // Allow self-signed certificates
+      headers: {
+        'User-Agent': 'LiveKit-Agent-Worker',
+      }
+    });
 
     this.ws.on('open', () => {
       console.log('WebSocket connection established');
@@ -91,8 +98,8 @@ class AgentWorker {
       }
     });
 
-    this.ws.on('close', () => {
-      console.log('WebSocket connection closed');
+    this.ws.on('close', (code, reason) => {
+      console.log('WebSocket connection closed:', { code, reason });
       this.cleanup();
       this.reconnect();
     });
@@ -129,7 +136,9 @@ class AgentWorker {
       console.log('Connecting to room:', roomName);
       
       const token = await this.generateToken(roomName);
-      const wsUrl = LIVEKIT_URL.replace('http', 'ws') + '/ws?access_token=' + token;
+      
+      // Don't modify the protocol if it's already wss://
+      const wsUrl = `${LIVEKIT_URL}/rtc?access_token=${encodeURIComponent(token)}`;
       
       this.setupWebSocket(wsUrl);
     } catch (error) {
