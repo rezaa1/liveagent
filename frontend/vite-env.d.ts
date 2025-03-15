@@ -9,6 +9,13 @@ export default defineConfig({
     emptyOutDir: true,
     sourcemap: false,
     minify: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'livekit-client'],
+        },
+      },
+    },
   },
   server: {
     port: 8900,
