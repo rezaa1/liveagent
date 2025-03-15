@@ -3,6 +3,7 @@ import { Agent, AgentFormData } from '../types/agent';
 import { LiveKitManager, RoomMetrics } from '../lib/livekit';
 import { toast } from 'react-hot-toast';
 import { saveAgent, getAgents, deleteAgent, updateAgentStatus as dbUpdateAgentStatus, updateAgentMetrics as dbUpdateAgentMetrics } from '../lib/db';
+import { generateToken } from '../lib/token';
 
 interface AgentStore {
   agents: Agent[];
@@ -77,10 +78,11 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     try {
       get().updateAgentStatus(id, 'connecting');
       
-      // Create LiveKit manager with metrics update callback
+      const token = await generateToken(agent.roomName, agent.name);
+      
       const manager = new LiveKitManager(
         agent.roomName,
-        'demo-token', // Replace with your LiveKit token generation logic
+        token,
         agent.configuration.maxRetries,
         (metrics: RoomMetrics) => {
           get().updateAgentMetrics(id, {
@@ -94,7 +96,6 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
 
       get().livekitManagers.set(id, manager);
       
-      // Connect and configure the agent
       await manager.connect();
       await manager.enableAudio(agent.configuration.audioEnabled);
       await manager.enableVideo(agent.configuration.videoEnabled);
