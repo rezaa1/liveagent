@@ -8,7 +8,6 @@ import {
   DisconnectReason,
   RemoteTrack,
   RemoteTrackPublication,
-  RoomOptions,
 } from 'livekit-client';
 import { toast } from 'react-hot-toast';
 
