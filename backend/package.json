@@ -1,0 +1,10 @@
+{
+    "name": "livekit-backend",
+    "version": "1.0.0",
+    "scripts": {
+      "start": "deno run --allow-net --allow-env index.ts"
+    },
+    "dependencies": {
+      "livekit-server-sdk": "https://esm.sh/livekit-server-sdk@1.2.7"
+    }
+  }
