@@ -25,7 +25,7 @@ export class AIAgent {
       if (participant) {
         const message = new TextDecoder().decode(payload);
         console.log(`Received message from ${participant.identity}:`, message);
-        this.respondToMessage(message, participant);
+        this.respondToMessage(message);
       }
     });
   }
@@ -40,21 +40,15 @@ export class AIAgent {
     const message = this.responses[Math.floor(Math.random() * this.responses.length)];
     const data = new TextEncoder().encode(message);
     
-    this.room.localParticipant?.publishData(data, {
-      reliable: true,
-      kind: DataPacket_Kind.RELIABLE,
-    });
+    this.room.localParticipant?.publishData(data, DataPacket_Kind.RELIABLE);
   }
 
-  private respondToMessage(message: string, sender: Participant) {
+  private respondToMessage(message: string) {
     const response = `Received your message: "${message}"`;
     const data = new TextEncoder().encode(response);
     
     setTimeout(() => {
-      this.room.localParticipant?.publishData(data, {
-        reliable: true,
-        kind: DataPacket_Kind.RELIABLE,
-      });
+      this.room.localParticipant?.publishData(data, DataPacket_Kind.RELIABLE);
     }, Math.random() * 1000); // Random delay up to 1 second
   }
 }
