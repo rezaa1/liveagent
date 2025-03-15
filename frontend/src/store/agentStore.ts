@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { v4 as uuidv4 } from 'uuid';
 import { Agent, AgentFormData } from '../types/agent';
 import { LiveKitManager, RoomMetrics } from '../lib/livekit';
 import { generateToken } from '../lib/token';
@@ -21,7 +22,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
 
   addAgent: (data: AgentFormData) => {
     const newAgent: Agent = {
-      id: crypto.randomUUID(),
+      id: uuidv4(),
       status: 'offline',
       ...data,
     };
@@ -67,10 +68,8 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     try {
       get().updateAgentStatus(id, 'connecting');
       
-      // Generate token for the agent
       const token = await generateToken(agent.roomName, agent.name);
       
-      // Create LiveKit manager with metrics update callback
       const manager = new LiveKitManager(
         agent.roomName,
         token,
@@ -87,7 +86,6 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
 
       get().livekitManagers.set(id, manager);
       
-      // Connect and configure the agent
       await manager.connect();
       await manager.enableAudio(agent.configuration.audioEnabled);
       await manager.enableVideo(agent.configuration.videoEnabled);
