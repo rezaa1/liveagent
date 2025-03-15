@@ -8,6 +8,8 @@ export interface Agent {
     videoEnabled: boolean;
     simulcast: boolean;
     maxRetries: number;
+    isAIAgent?: boolean; // New field to identify AI agents
+    aiResponseDelay?: number; // Delay between AI responses in ms
   };
   metrics?: {
     connectionQuality: 'excellent' | 'good' | 'poor';
@@ -25,6 +27,8 @@ export interface AgentFormData {
     videoEnabled: boolean;
     simulcast: boolean;
     maxRetries: number;
+    isAIAgent?: boolean;
+    aiResponseDelay?: number;
   };
 }
 

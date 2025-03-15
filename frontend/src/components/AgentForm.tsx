@@ -18,6 +18,9 @@ export function AgentForm() {
         videoEnabled: formData.get('videoEnabled') === 'on',
         simulcast: formData.get('simulcast') === 'on',
         maxRetries: parseInt(formData.get('maxRetries') as string, 10),
+        isAIAgent: formData.get('isAIAgent') === 'on',
+        aiResponseDelay: formData.get('isAIAgent') === 'on' ? 
+          parseInt(formData.get('aiResponseDelay') as string, 10) : undefined,
       },
     };
     
@@ -71,6 +74,11 @@ export function AgentForm() {
             <input type="checkbox" name="simulcast" className="rounded" />
             <span className="text-sm font-medium text-gray-700">Simulcast</span>
           </label>
+
+          <label className="flex items-center space-x-2">
+            <input type="checkbox" name="isAIAgent" className="rounded" />
+            <span className="text-sm font-medium text-gray-700">AI Agent</span>
+          </label>
         </div>
 
         <div>
@@ -82,6 +90,20 @@ export function AgentForm() {
               min="1"
               max="10"
               defaultValue="3"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            />
+          </label>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            AI Response Delay (ms)
+            <input
+              type="number"
+              name="aiResponseDelay"
+              min="500"
+              max="5000"
+              defaultValue="1000"
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
           </label>

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import { Agent, AgentFormData } from '../types/agent';
 import { LiveKitManager, RoomMetrics } from '../lib/livekit';
+import { AIAgent } from '../lib/aiAgent';
 import { generateToken } from '../lib/token';
 import { toast } from 'react-hot-toast';
 import { ConnectionQuality } from 'livekit-client';
@@ -9,6 +10,7 @@ import { ConnectionQuality } from 'livekit-client';
 interface AgentStore {
   agents: Agent[];
   livekitManagers: Map<string, LiveKitManager>;
+  aiAgents: Map<string, AIAgent>;
   addAgent: (data: AgentFormData) => void;
   removeAgent: (id: string) => void;
   updateAgentStatus: (id: string, status: Agent['status'], error?: string) => void;
@@ -20,6 +22,7 @@ interface AgentStore {
 export const useAgentStore = create<AgentStore>((set, get) => ({
   agents: [],
   livekitManagers: new Map(),
+  aiAgents: new Map(),
 
   addAgent: (data: AgentFormData) => {
     const newAgent: Agent = {
@@ -33,10 +36,18 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
 
   removeAgent: (id: string) => {
     const manager = get().livekitManagers.get(id);
+    const aiAgent = get().aiAgents.get(id);
+    
     if (manager) {
       manager.cleanup();
       get().livekitManagers.delete(id);
     }
+    
+    if (aiAgent) {
+      aiAgent.stop();
+      get().aiAgents.delete(id);
+    }
+    
     set((state) => ({
       agents: state.agents.filter((agent) => agent.id !== id),
     }));
@@ -102,6 +113,16 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
       if (agent.configuration.videoEnabled) {
         await manager.enableVideo(true);
       }
+
+      // If this is an AI agent, start its behavior
+      if (agent.configuration.isAIAgent) {
+        const aiAgent = new AIAgent(
+          manager.getRoom(),
+          agent.configuration.aiResponseDelay
+        );
+        aiAgent.start();
+        get().aiAgents.set(id, aiAgent);
+      }
       
       get().updateAgentStatus(id, 'online');
       toast.success(`Agent "${agent.name}" started successfully`);
@@ -116,6 +137,12 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   stopAgent: (id: string) => {
     const agent = get().agents.find((a) => a.id === id);
     const manager = get().livekitManagers.get(id);
+    const aiAgent = get().aiAgents.get(id);
+    
+    if (aiAgent) {
+      aiAgent.stop();
+      get().aiAgents.delete(id);
+    }
     
     if (manager) {
       manager.cleanup();
