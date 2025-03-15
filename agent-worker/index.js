@@ -58,7 +58,8 @@ class AgentWorker {
       rejectUnauthorized: false, // Allow self-signed certificates
       headers: {
         'User-Agent': 'LiveKit-Agent-Worker',
-      }
+      },
+      perMessageDeflate: false // Disable compression to handle binary messages better
     });
 
     this.ws.on('open', () => {
@@ -74,32 +75,47 @@ class AgentWorker {
       this.ws.send(JSON.stringify(joinMessage));
     });
 
-    this.ws.on('message', (data) => {
+    this.ws.on('message', (data, isBinary) => {
       try {
-        const message = JSON.parse(data);
-        console.log('Received message:', message);
-        
-        switch (message.type) {
-          case 'connected':
-            console.log('Successfully joined room:', message.room);
-            break;
-          case 'participant_joined':
-            console.log('Participant joined:', message.participant);
-            break;
-          case 'participant_left':
-            console.log('Participant left:', message.participant);
-            break;
-          case 'error':
-            console.error('Received error:', message.error);
-            break;
+        // Handle binary messages differently from text messages
+        if (isBinary) {
+          console.log('Received binary message of length:', data.length);
+          // Handle binary protocol messages if needed
+          return;
+        }
+
+        // Try to parse as JSON only if it's a text message
+        const textData = data.toString('utf8');
+        if (textData.startsWith('{') || textData.startsWith('[')) {
+          const message = JSON.parse(textData);
+          console.log('Received JSON message:', message);
+          
+          switch (message.type) {
+            case 'connected':
+              console.log('Successfully joined room:', message.room);
+              break;
+            case 'participant_joined':
+              console.log('Participant joined:', message.participant);
+              break;
+            case 'participant_left':
+              console.log('Participant left:', message.participant);
+              break;
+            case 'error':
+              console.error('Received error:', message.error);
+              break;
+          }
+        } else {
+          console.log('Received text message:', textData);
         }
       } catch (error) {
-        console.error('Failed to parse message:', error);
+        // Don't treat parsing errors as critical - just log them
+        console.log('Message parsing skipped:', error.message);
       }
     });
 
     this.ws.on('close', (code, reason) => {
-      console.log('WebSocket connection closed:', { code, reason });
+      const reasonText = reason.toString() || 'No reason provided';
+      console.log('WebSocket connection closed:', { code, reason: reasonText });
       this.cleanup();
       this.reconnect();
     });
@@ -136,8 +152,6 @@ class AgentWorker {
       console.log('Connecting to room:', roomName);
       
       const token = await this.generateToken(roomName);
-      
-      // Don't modify the protocol if it's already wss://
       const wsUrl = `${LIVEKIT_URL}/rtc?access_token=${encodeURIComponent(token)}`;
       
       this.setupWebSocket(wsUrl);
