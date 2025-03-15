@@ -65,14 +65,6 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     }
 
     try {
-      // Check if required environment variables are set
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      if (!supabaseUrl || !supabaseAnonKey) {
-        throw new Error('Required environment variables are not configured. Please check your .env file.');
-      }
-
       get().updateAgentStatus(id, 'connecting');
       
       // Generate token for the agent

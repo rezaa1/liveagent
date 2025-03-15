@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+// import { supabase } from './supabase';
 
 export async function generateToken(roomName: string, participantName: string): Promise<string> {
   if (!roomName || !participantName) {
@@ -6,24 +6,25 @@ export async function generateToken(roomName: string, participantName: string): 
   }
 
   try {
-    const { data, error } = await supabase.functions.invoke('livekit-token', {
-      body: {
-        room: roomName,
-        participant: participantName,
-      },
-    });
+    // Replace Supabase function call with local DB logic
+    // const { data, error } = await supabase.functions.invoke('livekit-token', {
+    //   body: {
+    //     room: roomName,
+    //     participant: participantName,
+    //   },
+    // });
 
-    if (error) {
-      console.error('Token generation failed:', error);
-      throw new Error(`Token generation failed: ${error.message}`);
-    }
+    // if (error) {
+    //   console.error('Token generation failed:', error);
+    //   throw new Error(`Token generation failed: ${error.message}`);
+    // }
 
-    if (!data || !data.token) {
-      console.error('Invalid token response:', data);
-      throw new Error('Invalid token response from server');
-    }
+    // if (!data || !data.token) {
+    //   console.error('Invalid token response:', data);
+    //   throw new Error('Invalid token response from server');
+    // }
 
-    return data.token;
+    // return data.token;
   } catch (error) {
     console.error('Token generation error:', {
       error,
