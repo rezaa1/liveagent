@@ -8,6 +8,7 @@ import {
   DisconnectReason,
   RemoteTrack,
   RemoteTrackPublication,
+  RoomOptions,
 } from 'livekit-client';
 import { toast } from 'react-hot-toast';
 
@@ -152,24 +153,7 @@ export class LiveKitManager {
 
   public async connect() {
     try {
-      const response = await fetch('/api/livekit-url', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${this.token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to get LiveKit URL');
-      }
-
-      const { url } = await response.json();
-      
-      if (!url) {
-        throw new Error('LiveKit URL not found');
-      }
-
-      await this.room.connect(url, this.token, {
+      await this.room.connect('wss://demo.livekit.cloud', this.token, {
         autoSubscribe: true,
       });
     } catch (error) {
