@@ -1,4 +1,3 @@
-import React from 'react';
 import { Toaster } from 'react-hot-toast';
 import { AgentForm } from './components/AgentForm';
 import { AgentList } from './components/AgentList';
