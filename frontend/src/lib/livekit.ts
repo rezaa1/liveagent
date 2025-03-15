@@ -67,8 +67,8 @@ export class LiveKitManager {
       if (this.onMetricsUpdate && this.room.state === ConnectionState.Connected) {
         const metrics: RoomMetrics = {
           connectionQuality: this.room.localParticipant?.connectionQuality ?? ConnectionQuality.Unknown,
-          latency: 0, // LiveKit doesn't expose direct latency measurements
-          packetsLost: 0, // LiveKit doesn't expose direct packet loss measurements
+          latency: 0,
+          packetsLost: 0,
           participantCount: this.room.participants.size,
         };
         this.onMetricsUpdate(metrics);
@@ -144,7 +144,7 @@ export class LiveKitManager {
 
   private async reconnect() {
     try {
-      const liveKitUrl = "wss://callninja-9rs9nskz.livekit.cloud";
+      const liveKitUrl = import.meta.env.VITE_LIVEKIT_URL;
       if (!liveKitUrl) {
         throw new Error('LiveKit URL is not defined in environment variables');
       }
@@ -168,6 +168,8 @@ export class LiveKitManager {
       if (!this.isValidUrl(url)) {
         throw new Error('Invalid LiveKit URL provided');
       }
+
+      // Connect first without enabling tracks
       await this.room.connect(url, this.token, {
         autoSubscribe: true,
       });
@@ -186,14 +188,28 @@ export class LiveKitManager {
   }
 
   public async enableAudio(enabled: boolean) {
-    if (this.room.localParticipant) {
-      await this.room.localParticipant.setMicrophoneEnabled(enabled);
+    if (!this.room.localParticipant) return;
+    
+    try {
+      if (enabled) {
+        await this.room.localParticipant.setMicrophoneEnabled(enabled);
+      }
+    } catch (error) {
+      console.error('Error enabling audio:', error);
+      toast.error('Failed to enable audio');
     }
   }
 
   public async enableVideo(enabled: boolean) {
-    if (this.room.localParticipant) {
-      await this.room.localParticipant.setCameraEnabled(enabled);
+    if (!this.room.localParticipant) return;
+    
+    try {
+      if (enabled) {
+        await this.room.localParticipant.setCameraEnabled(enabled);
+      }
+    } catch (error) {
+      console.error('Error enabling video:', error);
+      toast.error('Failed to enable video');
     }
   }
 

@@ -70,7 +70,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
       get().updateAgentStatus(id, 'connecting');
       
       const token = await generateToken(agent.roomName, agent.name);
-      const liveKitUrl = "wss://callninja-9rs9nskz.livekit.cloud"
+      const liveKitUrl = import.meta.env.VITE_LIVEKIT_URL;
       
       if (!liveKitUrl) {
         throw new Error('LiveKit URL is not defined in environment variables');
@@ -92,9 +92,16 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
 
       get().livekitManagers.set(id, manager);
       
+      // First connect without tracks
       await manager.connect(liveKitUrl);
-      await manager.enableAudio(agent.configuration.audioEnabled);
-      await manager.enableVideo(agent.configuration.videoEnabled);
+      
+      // Then enable media if configured
+      if (agent.configuration.audioEnabled) {
+        await manager.enableAudio(true);
+      }
+      if (agent.configuration.videoEnabled) {
+        await manager.enableVideo(true);
+      }
       
       get().updateAgentStatus(id, 'online');
       toast.success(`Agent "${agent.name}" started successfully`);
