@@ -162,7 +162,10 @@ export class LiveKitManager {
       return false;
     }
   }
-
+  public getRoom() {
+    return this.room;
+  }
+  
   private async checkMediaDevices(): Promise<boolean> {
     try {
       if (typeof navigator === 'undefined' || 
