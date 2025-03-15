@@ -144,10 +144,9 @@ export class LiveKitManager {
 
   private async reconnect() {
     try {
-      const liveKitUrl = process.env.REACT_APP_LIVEKIT_URL;
-      if (!liveKitUrl || !this.isValidUrl(liveKitUrl)) {
-        console.error('Invalid LiveKit URL:', liveKitUrl); // Added console error for debugging
-        throw new Error('LiveKit URL is not defined or is invalid');
+      const liveKitUrl = import.meta.env.VITE_LIVEKIT_URL;
+      if (!liveKitUrl) {
+        throw new Error('LiveKit URL is not defined in environment variables');
       }
       await this.connect(liveKitUrl);
     } catch (error) {
@@ -166,6 +165,9 @@ export class LiveKitManager {
 
   public async connect(url: string) {
     try {
+      if (!this.isValidUrl(url)) {
+        throw new Error('Invalid LiveKit URL provided');
+      }
       await this.room.connect(url, this.token, {
         autoSubscribe: true,
       });

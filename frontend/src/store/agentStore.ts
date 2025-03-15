@@ -70,7 +70,12 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
       get().updateAgentStatus(id, 'connecting');
       
       const token = await generateToken(agent.roomName, agent.name);
+      const liveKitUrl = import.meta.env.VITE_LIVEKIT_URL;
       
+      if (!liveKitUrl) {
+        throw new Error('LiveKit URL is not defined in environment variables');
+      }
+
       const manager = new LiveKitManager(
         agent.roomName,
         token,
@@ -87,7 +92,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
 
       get().livekitManagers.set(id, manager);
       
-      await manager.connect(agent.roomName);
+      await manager.connect(liveKitUrl);
       await manager.enableAudio(agent.configuration.audioEnabled);
       await manager.enableVideo(agent.configuration.videoEnabled);
       
